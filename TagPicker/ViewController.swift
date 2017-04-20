@@ -81,7 +81,7 @@ class ViewController: UIViewController {
 
     func updateSuggestions() {
         let tags = tagsInField
-        let partial = tags.last ?? ""
+        let partial = lastTag
         let matches = match(filter: partial)
         dataSource.suggestions = matches
         tableView.reloadData()
@@ -91,6 +91,10 @@ class ViewController: UIViewController {
         return textView.text
             .components(separatedBy: ",")
             .map({ $0.trimmingCharacters(in: .whitespaces) })
+    }
+
+    var lastTag: String {
+        return tagsInField.last ?? ""
     }
 
     func match(filter: String?) -> [String] {
@@ -137,6 +141,32 @@ extension ViewController: UITextViewDelegate {
         normalizeText()
         updateTextViewHeight()
         updateSuggestions()
+    }
+
+    func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        let original = textView.text as NSString
+        if range.length == 0,
+            text == ",",
+            lastTag.isEmpty {
+            // Don't allow a second comma if the last tag is blank
+            return false
+        } else if
+            range.length == 1 && text == "", // Deleting last character
+            range.location > 0, // Not at the beginning
+            original.substring(with: NSRange(location: range.location - 1, length: 1)) == "," // Previous is a comma
+            {
+                // Delete the comma as well
+                textView.text = original.substring(to: range.location - 1)
+                return false
+        } else if range.length == 0, // Inserting
+            text == ",", // a comma
+            range.location == original.length // at the end
+        {
+            // Append a space
+            textView.text = original.replacingCharacters(in: range, with: ", ")
+            return false
+        }
+        return true
     }
 }
 
